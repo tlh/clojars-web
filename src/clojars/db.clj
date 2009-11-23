@@ -1,15 +1,21 @@
 (ns clojars.db
   (:use [clojars :only [config]]
-        clojure.contrib.sql
         clojure.contrib.duck-streams
-        [clojure.contrib.str-utils2 :only [join]])
+        clojure.contrib.sql
+        [clojure.contrib.str-utils2 :only [join]]
+        [clojure.contrib.json.write :only [print-json]]
+        [com.ashafa.clutch :exclude [config]]
+        [com.reasonr.scriptjure :only (js)])
   (:import java.security.MessageDigest
            java.util.Date
-           java.io.File))
+           java.io.File
+           java.text.SimpleDateFormat))
+
+(def *db* "clojars") ; TODO: move to config
 
 (def ssh-options "no-agent-forwarding,no-port-forwarding,no-pty,no-X11-forwarding")
 
-(def *reserved-names* 
+(def *reserved-names*
      #{"clojure" "clojars" "clojar" "register" "login"
        "pages" "logout" "password" "username" "user"
        "repo" "repos" "jar" "jars" "about" "help" "doc"
@@ -21,7 +27,9 @@
        "webmaster" "profile" "dashboard" "settings" "options"
        "index" "files"})
 
-(let [chars (map char 
+
+
+(let [chars (map char
                  (mapcat (fn [[x y]] (range (int x) (inc (int y))))
                      [[\a \z] [\A \Z] [\0 \9]]))]
   (defn rand-string
@@ -30,17 +38,10 @@
     (apply str (take n (map #(nth chars %) 
                             (repeatedly #(rand (count chars))))))))
 
-(defn write-key-file [path]
-  (locking (:key-file config)
-   (let [new-file (File. (str path ".new"))]
-     (with-query-results rs ["select user, ssh_key from users"]
-       (with-open [f (writer new-file)]
-         (doseq [x rs]
-           (.println f (str "command=\"ng --nailgun-port 8700 clojars.scp " (:user x) 
-                            "\"," ssh-options " " 
-                            (.replaceAll (.trim (:ssh_key  x)) 
-                                               "[\n\r\0]" ""))))))
-     (.renameTo new-file (File. path)))))
+(defn gen-salt []
+  (rand-string 16))
+
+
 
 (defn db-middleware
   [handler]
@@ -57,6 +58,26 @@
     (let [md (MessageDigest/getInstance "SHA")]
       (.update md (.getBytes (apply str s)))
       (format "%040x" (java.math.BigInteger. 1 (.digest md))))))
+
+;;
+;; Couch utils
+;;
+
+;;
+;; Users
+;;
+
+(defview *db* :users :all [doc]
+  (if (== doc.type "users")
+    (emit nil doc)))
+
+(defn find-user [username]
+  (get-view *db* :users :all {:startkey username}))
+(find-user "ato")
+
+;;
+;;
+;;
 
 (defn find-user [username]
   (with-query-results rs ["select * from users where user = ?" username]
@@ -112,27 +133,29 @@
         (first rs))))
 
 
-(defn add-user [email user password ssh-key]
-  (let [salt (rand-string 16)]
-    (insert-values 
-     :users
-     [:email :user :password :salt :ssh_key :created]
-     [email user (sha1 salt password) salt ssh-key (Date.)])
-    (insert-values 
-     :groups
-     [:name :user]
-     [(str "org.clojars." user) user])
-    (write-key-file (:key-file config))))
+(defn add-user [email username password ssh-key]
+  (let [salt (gen-salt)]
+    (document-create
+     *db*
+     {:type :user
+      :username username
+      :email email
+      :password (sha1 salt password)
+      :salt salt
+      :ssh-keys [ssh-key]
+      :created (Date.)
+      :groups [(str "org.clojars." username)]})))
 
 (defn update-user [account email user password ssh-key]
   (let [salt (rand-string 16)]
-   (update-values 
+   (update-values
     :users ["user=?" account]
-    {:email email 
-     :user user 
+    {:email email
+     :user user
      :salt salt
      :password (sha1 salt password)
-     :ssh_key ssh-key})
+     :ssh_key ssh-key
+     :groups [(str "org.clojars." user)]})
    (write-key-file (:key-file config))))
 
 (defn add-member [group user]

@@ -1,6 +1,7 @@
 (ns clojars.web.user
   (:use clojars.db
         clojars.web.common
+        clojars.utils
         compojure))
 
 (defn register-form [ & [errors email user ssh-key]]
@@ -23,11 +24,6 @@
                            "what's this?") ")"
                            (text-area :ssh-key ssh-key)
                            (submit-button "Register"))))
-
-(defn conj-when [coll test x]
-  (if test
-    (conj coll x)
-    coll))
 
 (defn valid-ssh-key? [key]
   (re-matches #"(ssh-\w+ \S+|\d+ \d+ \D+).*\s*" key))
