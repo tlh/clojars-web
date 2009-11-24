@@ -49,10 +49,15 @@
 (declare write-key-file)
 
 (defn find-user [username]
-  (first (:rows (get-view "users" :by-username {:key username :limit 1}))))
+  (:value (first (:rows (get-view "users" :by-username
+                                  {:key username :limit 1})))))
 
 (defn all-users []
   (:rows (get-view "users" :all)))
+
+(defn auth-user [username password]
+  (when-let [user (find-user username)]
+    (= (:password user) (sha1 (:salt user) password))))
 
 (defn add-user [email username password ssh-key]
   (assert (not (find-user username)))
@@ -67,32 +72,33 @@
       :created (Date.)
       :groups [(str "org.clojars." username)]})))
 
-(defn update-user [account email user password ssh-key]
+(defn update-user [account email password ssh-key]
   (let [doc (find-user account)
         salt (gen-salt)]
     (assert doc)
-    (update-document doc
+    (update-document
+     doc
      (-> {}
          (conj-when email {:email email})
          (conj-when password {:password (sha1 salt password), :salt salt})
          (conj-when ssh-key {:ssh-keys [ssh-key]}))))
   (write-key-file (:key-file config)))
 
-(defn init-users []
+(defn init-users-view []
   (when-let [doc (get-document "_design/users")]
     (delete-document doc))
 
   (create-clj-view
    "users" "all"
    (fn [doc]
-     (when (= (doc :type) "userx")
-       [nil doc])))
+     (when (= (doc :type) "user")
+       [[nil doc]])))
 
   (create-clj-view
    "users" "by-username"
    (fn [doc]
      (when (= (doc :type) "user")
-       [(:username doc) doc])))
+       [[(:username doc) doc]])))
 
   (create-clj-view
    "users" "by-group"
@@ -119,16 +125,16 @@
 ;;
 
 (defn group-members [group]
-  (:rows (get-view "users" :by-group {:key group})))
+  (map :value (:rows (get-view "users" :by-group {:key group}))))
 
 (defn add-member [group username]
   (let [user (find-user username)]
     (assert user)
     (when-not (some #{group} (:groups user))
-     (update-document user {:groups (conj (:groups user) group)}))))
+      (update-document user {:groups (conj (:groups user) group)}))))
 
 (defn check-and-add-group [account group jar]
-  (when-not (re-matches #"^[a-z0-9-_.]+$" group)
+  (when-not (re-matches #"^[a-z0-9_.-]+$" group)
     (throw (Exception. (str "Group names must consist of lowercase "
                             "letters, numbers, hyphens, underscores "
                             "and full-stops."))))
@@ -146,29 +152,54 @@
 ;;
 
 (defn add-jar [account jarmap & [check-only]]
-  (when-not (re-matches #"^[a-z0-9-_.]+$" (:name jarmap))
-    (throw (Exception. (str "Jar names must consist solely of lowercase "
+  (when-not (re-matches #"^[a-z0-9_.-]+$" (:name jarmap))
+    (throw (Exception. (str "Jar names must consist of lowercase "
                             "letters, numbers, hyphens and underscores."))))
 
-  (with-connection (:db config)
-    (transaction
-     (when check-only (set-rollback-only))
-     (check-and-add-group account (:group jarmap) (:name jarmap))
-     (insert-records
-      :jars
-      {:group_name (:group jarmap)
-       :jar_name   (:name jarmap)
-       :version    (:version jarmap)
-       :user       account
-       :created    (Date.)
-       :description (:description jarmap)
-       :homepage   (:homepage jarmap)
-       :authors    (join ", " (map #(.replace % "," "") 
-                                   (:authors jarmap)))}))))
+  (when-not (re-matches #"^[a-zA-Z0-9_.-]+$" (:version jarmap))
+    (throw (Exception.
+            (str "Versions must consist only of "
+                 "letters, numbers, hyphens, underscores and dots."))))
+
+  (check-and-add-group account (:group jarmap) (:name jarmap))
+
+  (create-document
+   (assoc jarmap
+     :user account
+     :created (Date.))))
+
+(defn init-jars-view []
+  (when-let [doc (get-document "_design/jars")]
+    (delete-document doc))
+
+  (create-clj-view
+   "jars" "all"
+   (fn [doc]
+     (when (= (doc :type) "jar")
+       [nil doc])))
+
+  (create-clj-view
+   "jars" "by-username"
+   (fn [doc]
+     (when (= (doc :type) "jar")
+       [[(:username doc) doc]])))
+
+  (create-clj-view
+   "jars" "by-group"
+   (fn [doc]
+     (when (= (doc :type) "jar")
+       (for [group (doc :groups)]
+         [group doc]))))
+
+  (create-clj-view
+   "jars" "by-created"
+   (fn [doc]
+     (when (= (doc :type) "jar")
+       [[created doc]]))))
 
 (defn init-db []
-  (update-document)
-  (init-users))
+  (init-users-view)
+  (init-jars-view))
 
 (comment
 
@@ -179,15 +210,15 @@
 
     (find-user "atox")
     )
-   (= [1 2 3] '(1 2 3))
+  (= [1 2 3] '(1 2 3))
 
-   (update-document)
+  (update-document)
 
   (with-db db
     (create-document
      {:type "user"
       :username "atox"}))
 
-   (ad-hoc-view
-    (with-clj-view-server
-      (fn [doc] [nil doc]))))
+  (ad-hoc-view
+   (with-clj-view-server
+     (fn [doc] [nil doc]))))

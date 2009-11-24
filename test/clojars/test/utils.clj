@@ -1,4 +1,4 @@
-(ns test-utils
+(ns clojars.test.utils
   (:use [clojure.test]
         [clojars.utils]))
 
