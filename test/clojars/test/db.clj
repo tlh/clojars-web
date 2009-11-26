@@ -1,7 +1,7 @@
-(ns clojars.test.db2
+(ns clojars.test.db
   (:use [clojure.test]
         [clojure.contrib.repl-utils]
-        [clojars.db2]
+        [clojars.db]
         [com.ashafa.clutch :only [create-database delete-database with-db]]))
 
 (def test-db {:name "clojars-test"
@@ -17,6 +17,7 @@
 (use-fixtures :each setup-db)
 
 (deftest test-add-user
+  (is (not (auth-user "user" "bad-pass")))
   (add-user "user@example.org" "user" "pass" nil)
   (let [user (find-user "user")]
     (is user)
@@ -38,11 +39,36 @@
   (add-member "test-group" "user1")
 
   (is (= (:groups (find-user "user1")) ["org.clojars.user1" "test-group"]))
-  (is (= (map :username (group-members "test-group")) ["user1"]))
+  (is (= (group-members "test-group") ["user1"]))
   (add-member "test-group" "user1")
   (is (= (count (group-members "test-group")) 1))
     (add-member "test-group" "user2")
   (is (= (count (group-members "test-group")) 2)))
+
+(deftest test-jars
+  (add-user "user1@example.org" "user1" "pass" nil)
+  (add-jar
+   "user1"
+   {:name "clojars-web"
+    :group "org.clojars.user1"
+    :version "0.5.0-SNAPSHOT"
+    :dependencies [{:name "clojure"
+                    :group "org.clojure"
+                    :version "1.0"}]})
+  (add-jar
+   "user1"
+   {:name "clojars-web2"
+    :group "org.clojars.user1"
+    :version "0.5.0-SNAPSHOT"
+    :dependencies [{:name "clojure"
+                    :group "org.clojure"
+                    :version "1.0"}]})
+  (is (= (count (recent-jars)) 2))
+  (is (= (:name (second (recent-jars)) "clojars-web2")))
+
+  (is (= (count (jars-by-user "user1")) 2))
+  (is (= (count (jars-by-user "user2")) 0))
+  (is (= (:group (first (jars-by-user "user1"))) "org.clojars.user1")))
 
 
 (comment

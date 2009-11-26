@@ -20,7 +20,8 @@
 (defn gen-salt []
   (rand-string 16))
 
-(defn conj-when [coll test x]
-  (if test
-    (conj coll x)
-    coll))
+(defmacro conj-when [coll test x]
+  `(let [coll# ~coll]
+     (if ~test
+       (conj coll# ~x)
+       coll#)))

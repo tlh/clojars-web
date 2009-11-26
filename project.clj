@@ -10,7 +10,6 @@
 
                  [org.clojars.ato/compojure "0.3.1"]
                  [org.clojars.ato/nailgun "0.7.1"]
-                 [org.xerial/sqlite-jdbc "3.6.17"]
 
                  [org.clojars.ato/clutch "0.1.0-SNAPSHOT"]
                  [org.clojars.ato/scriptjure "0.1.0-SNAPSHOT"]])

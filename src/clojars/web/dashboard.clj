@@ -45,4 +45,4 @@
     (unordered-list (map jar-link (jars-by-user account)))
     (link-to "http://wiki.github.com/ato/clojars-web/pushing" "add new jar")
     [:h2 "Your groups"]
-    (unordered-list (map group-link (find-groups account)))))
+    (unordered-list (map group-link (:groups (find-user account))))))

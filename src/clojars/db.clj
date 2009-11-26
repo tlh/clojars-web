@@ -1,222 +1,51 @@
+;;; TODO: split into seperate files
+
 (ns clojars.db
-  (:use [clojars :only [config]]
-        clojure.contrib.duck-streams
-        clojure.contrib.sql
-        [clojure.contrib.str-utils2 :only [join]]
-        [clojure.contrib.json.write :only [print-json]]
-        [com.ashafa.clutch :exclude [config]]
-        [com.reasonr.scriptjure :only (js)])
-  (:import java.security.MessageDigest
-           java.util.Date
-           java.io.File
-           java.text.SimpleDateFormat))
+  "CouchDB database backend"
+  (:use [clojure.contrib.ns-utils :only [immigrate]])
+  (:require (clojars.db utils users jars groups)))
 
-(def *db* "clojars") ; TODO: move to config
-
-(def ssh-options "no-agent-forwarding,no-port-forwarding,no-pty,no-X11-forwarding")
-
-(def *reserved-names*
-     #{"clojure" "clojars" "clojar" "register" "login"
-       "pages" "logout" "password" "username" "user"
-       "repo" "repos" "jar" "jars" "about" "help" "doc"
-       "docs" "pages" "images" "js" "css" "maven" "api"
-       "download" "create" "new" "upload" "contact" "terms"
-       "group" "groups" "browse" "status" "blog" "search"
-       "email" "welcome" "devel" "development" "test" "testing"
-       "prod" "production" "admin" "administrator" "root"
-       "webmaster" "profile" "dashboard" "settings" "options"
-       "index" "files"})
+(immigrate 'clojars.db.utils
+           'clojars.db.users
+           'clojars.db.jars
+           'clojars.db.groups)
 
 
-
-(let [chars (map char
-                 (mapcat (fn [[x y]] (range (int x) (inc (int y))))
-                     [[\a \z] [\A \Z] [\0 \9]]))]
-  (defn rand-string
-    "Generates a random string of [A-z0-9] of length n."
-    [n]
-    (apply str (take n (map #(nth chars %) 
-                            (repeatedly #(rand (count chars))))))))
-
-(defn gen-salt []
-  (rand-string 16))
-
-
-
-(defn db-middleware
-  [handler]
-  (fn [request]
-    (with-connection (:db config) (handler request))))
-
-(defmacro with-db
-  [& body]
-  `(with-connection (:db config)
-     ~@body))
-
-(defn sha1 [& s]
-  (when-let [s (seq s)]
-    (let [md (MessageDigest/getInstance "SHA")]
-      (.update md (.getBytes (apply str s)))
-      (format "%040x" (java.math.BigInteger. 1 (.digest md))))))
-
-;;
-;; Couch utils
-;;
-
-;;
-;; Users
-;;
-
-(defview *db* :users :all [doc]
-  (if (== doc.type "users")
-    (emit nil doc)))
-
-(defn find-user [username]
-  (get-view *db* :users :all {:startkey username}))
-(find-user "ato")
-
-;;
-;;
-;;
-
-(defn find-user [username]
-  (with-query-results rs ["select * from users where user = ?" username]
-    (first rs)))
-
-(defn find-groups [username]
-  (with-query-results rs ["select * from groups where user = ?" username]
-    (doall (map :name rs))))
-
-(defn group-members [group]
-  (with-query-results rs ["select * from groups where name like ?" group]
-    (doall (map :user rs))))
-
-(defn auth-user [user pass]
-  (with-query-results rs 
-      ["select * from users where (user = ? or email = ?)" user user]
-    (first (filter #(= (:password %) (sha1 (:salt %) pass)) rs))))
-
-(defn jars-by-user [user]
-  (with-query-results rs [(str "select * from jars where user = ? "
-                               "group by group_name, jar_name") user]
-    (vec rs)))
-
-(defn jars-by-group [group]
-  (with-query-results rs [(str "select * from jars where "
-                               "group_name = ? group by jar_name")
-                          group]
-    (vec rs)))
-
-(defn recent-jars []
-  (with-query-results rs 
-      [(str "select * from jars group by group_name, jar_name "
-            "order by created desc limit 5")]
-    (vec rs)))
-
-(defn find-canon-jar [jarname]
-  (with-query-results rs 
-      [(str "select * from jars where "
-            "jar_name = ? and group_name = ? "
-            "order by created desc limit 1")
-       jarname jarname]
-    (first rs)))
-
-(defn find-jar 
-  ([jarname]
-     (with-query-results rs [(str "select * from jars where "
-                                  "jar_name = ?") jarname]
-       (first rs)))
-  ([group jarname]
-      (with-query-results rs [(str "select * from jars where group_name = ? and "
-                                   "jar_name = ? order by created desc "
-                                   "limit 1") group jarname]
-        (first rs))))
-
-
-(defn add-user [email username password ssh-key]
-  (let [salt (gen-salt)]
-    (document-create
-     *db*
-     {:type :user
-      :username username
-      :email email
-      :password (sha1 salt password)
-      :salt salt
-      :ssh-keys [ssh-key]
-      :created (Date.)
-      :groups [(str "org.clojars." username)]})))
-
-(defn update-user [account email user password ssh-key]
-  (let [salt (rand-string 16)]
-   (update-values
-    :users ["user=?" account]
-    {:email email
-     :user user
-     :salt salt
-     :password (sha1 salt password)
-     :ssh_key ssh-key
-     :groups [(str "org.clojars." user)]})
-   (write-key-file (:key-file config))))
-
-(defn add-member [group user]
-  (insert-records :groups
-                  {:name group
-                   :user user}))
-
-(defn check-and-add-group [account group jar]
-  (when-not (re-matches #"^[a-z0-9-_.]+$" group)
-    (throw (Exception. (str "Group names must consist of lowercase "
-                            "letters, numbers, hyphens, underscores "
-                            "and full-stops."))))
-  (let [members (group-members group)]
-    (if (empty? members)
-      (if (or (find-user group) (*reserved-names* group))
-        (throw (Exception. (str "The group name " group " is already taken.")))
-        (add-member group account))
-      (when-not (some #{account} members)
-        (throw (Exception. (str "You don't have access to the "
-                                group " group.")))))))
-
-(defn add-jar [account jarmap & [check-only]]
-  (when-not (re-matches #"^[a-z0-9-_.]+$" (:name jarmap))
-    (throw (Exception. (str "Jar names must consist solely of lowercase "
-                            "letters, numbers, hyphens and underscores."))))
-  
-  (with-connection (:db config)
-    (transaction
-     (when check-only (set-rollback-only))
-     (check-and-add-group account (:group jarmap) (:name jarmap))
-     (insert-records
-      :jars
-      {:group_name (:group jarmap)
-       :jar_name   (:name jarmap)
-       :version    (:version jarmap)
-       :user       account
-       :created    (Date.)
-       :description (:description jarmap)
-       :homepage   (:homepage jarmap)
-       :authors    (join ", " (map #(.replace % "," "") 
-                                   (:authors jarmap)))}))))
-
-(defn search-jars [query & [offset]]
-  ;; TODO make search less stupid, figure out some relevance ranking
-  ;; scheme, do stopwords etc.
-  (with-query-results rs
-      [(str "select jar_name, group_name from search where "
-            "content match ?"
-            "limit 50 "
-            "offset ?")
-       query
-       (or offset 0)]
-    ;; TODO: do something less stupidly slow
-    (vec (map #(find-jar (:group_name %) (:jar_name %)) rs))))
-
+(defn init-db []
+  (init-users-view)
+  (init-jars-view))
 
 (comment
-  (with-connection (:db config) (add-jar "atotx" {:name "test3" :group "test3" :version "1.0"
-                                      :description "An dog awesome and non-existent test jar."
-                                      :homepage "http://clojars.org/"
-                                      :authors ["Alex Osborne" 
-                                                "a little fish"]}))
-  (with-connection (:db config) (find-user "atotx"))
-)
+  (conj {} {1 2})
+  (with-db db (doall (view-seq "users" :all {})))
+
+
+
+
+  (def db {:name "clojars-test"
+           :language "clojure"})
+  (with-db db
+    (init-db)
+
+    (find-user "atox")
+    )
+
+  (lazy-seq (concat [1 2] [3 4]))
+
+
+
+  (with-db db
+    (get-view "users" :all))
+
+  (= [1 2 3] '(1 2 3))
+
+  (update-document)
+
+  (with-db db
+    (create-document
+     {:type "user"
+      :username "atox"}))
+
+  (ad-hoc-view
+   (with-clj-view-server
+     (fn [doc] [nil doc]))))
