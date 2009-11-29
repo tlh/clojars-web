@@ -3,7 +3,7 @@
         compojure))
 
 (defn show-jar [account jar]
-  (html-doc account (:jar_name jar)
+  (html-doc account (:name jar)
             [:h1 (jar-link jar)]
             (:description jar)
 
@@ -20,8 +20,8 @@
               [:h3 "maven"]
               [:pre
                (tag "<dependency>\n")
-               (tag "  <groupId>") (:group_name jar) (tag "</groupId>\n")
-               (tag "  <artifactId>") (:jar_name jar) (tag "</artifactId>\n")
+               (tag "  <groupId>") (:group jar) (tag "</groupId>\n")
+               (tag "  <artifactId>") (:name jar) (tag "</artifactId>\n")
                (tag "  <version>") (h (:version jar)) (tag "</version>\n")
                (tag "</dependency>")]]
-             [:p "Pushed by " (user-link (:user jar))]]))
+             [:p "Pushed by " (user-link (:user jar)) " at " (:created jar)]]))

@@ -1,7 +1,8 @@
 (ns clojars.test.db
   (:use [clojure.test]
         [clojure.contrib.repl-utils]
-        [clojars.db]
+        (clojars.db jars users groups utils)
+        [clojars.db :only [init-db]]
         [com.ashafa.clutch :only [create-database delete-database with-db]]))
 
 (def test-db {:name "clojars-test"
@@ -63,12 +64,16 @@
     :dependencies [{:name "clojure"
                     :group "org.clojure"
                     :version "1.0"}]})
+
   (is (= (count (recent-jars)) 2))
   (is (= (:name (second (recent-jars)) "clojars-web2")))
 
   (is (= (count (jars-by-user "user1")) 2))
   (is (= (count (jars-by-user "user2")) 0))
-  (is (= (:group (first (jars-by-user "user1"))) "org.clojars.user1")))
+  (is (= (:group (first (jars-by-user "user1"))) "org.clojars.user1"))
+
+  (let [id (:_id (first (recent-jars)))]
+    (is (= (:version (jar-by-id id)) "0.5.0-SNAPSHOT"))))
 
 
 (comment

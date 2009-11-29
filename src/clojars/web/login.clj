@@ -1,6 +1,6 @@
 (ns clojars.web.login
   (:use clojars.web.common
-        clojars.db
+        (clojars.db users)
         compojure))
 
 (defn login-form [ & [error]]
@@ -20,6 +20,6 @@
 
 (defn login [{username :user password :password}]
   (if-let [user (auth-user username password)]
-    [(session-assoc :account (:user user))
+    [(session-assoc :account (:username user))
      (redirect-to "/")]
     (login-form "Incorrect username or password.")))

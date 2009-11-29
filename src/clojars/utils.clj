@@ -25,3 +25,14 @@
      (if ~test
        (conj coll# ~x)
        coll#)))
+
+(defn unique-by
+  "Returns a lazy sequence of the first values in coll for which f has a
+   unique result.  If specified, seen is an initial set of values which
+   should be treated as already seen.  The function f should have no
+   side-effects."
+  ([f coll] (unique-by f #{} coll))
+  ([f seen coll]
+     (lazy-seq
+      (when-let [[x & xs] (seq (drop-while #(seen (f %)) coll))]
+        (cons x (unique-by f (conj seen (f x)) xs))))))

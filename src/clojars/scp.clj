@@ -3,9 +3,10 @@
                     FileOutputStream)
            com.martiansoftware.nailgun.NGContext)
   (:use clojure.contrib.duck-streams
-        [clojars :only [config]])
-  (:require [clojars.maven :as maven]
-            [clojars.db    :as db])
+        [clojars :only [config]]
+        [clojars.db.jars :only [add-jar]]
+        [clojars.db :only [with-db]])
+  (:require [clojars.maven :as maven])
   (:gen-class
    :methods [#^{:static true}
              [nailMain [com.martiansoftware.nailgun.NGContext] void]]))
@@ -85,13 +86,6 @@
         jarmap (maven/model-to-map model)]
     [[model jarmap]]))
 
-;; TODO: probably want to show an error if the file contains no defjars
-(defmethod read-metadata "clj" [f default-group]
-  (for [jarmap (maven/read-jarspec (:file f))]
-    (let [jarmap (if (:group jarmap) jarmap (assoc jarmap :group default-group))]
-      (let [model (maven/make-model jarmap)]
-        [model jarmap]))))
-
 (defn jar-names
   "Construct a few possible name variations a jar might have."
   [jarmap]
@@ -101,8 +95,8 @@
 (defn finish-deploy [#^NGContext ctx, files]
   (let [account (first (.getArgs ctx))
         act-group (str "org.clojars." account)
-        metadata (filter #(#{"xml" "clj"} (:suffix %)) files)
-        jars     (filter #(#{"jar"}       (:suffix %)) files)
+        metadata (filter #(#{"xml"} (:suffix %)) files)
+        jars     (filter #(#{"jar"} (:suffix %)) files)
         jarfiles (into {} (map (juxt :name :file) jars))]
 
     (doseq [metafile metadata
@@ -120,10 +114,10 @@
         (do
           (.println *err* (str "\nDeploying " (:group jarmap) "/"
                                (:name jarmap) " " (:version jarmap)))
-          (db/add-jar (first (.getArgs ctx)) jarmap true)
+          (add-jar (first (.getArgs ctx)) jarmap true)
           (maven/deploy-model jarfile model
                               (str "file://" (:repo config)))
-          (db/add-jar (first (.getArgs ctx)) jarmap))
+          (add-jar (first (.getArgs ctx)) jarmap))
         (throw (Exception. (str "You need to give me one of: " names)))))
     (.println *err* (str "\nSuccess! Your jars are now available from "
                          "http://clojars.org/"))
@@ -159,7 +153,7 @@
              \D            (do (safe-read-line in) (recur files true))
              \T            (do (safe-read-line in) (recur files true))
              \E            (do (safe-read-line in) (recur files true))
-             (char 65535)  (finish-deploy ctx files)
+             (char 65535)  (with-db (finish-deploy ctx files))
              (throw (IOException. (str "Unknown scp command: '"
                                        (int cmd) "'")))))))
 

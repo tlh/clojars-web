@@ -1,6 +1,6 @@
 (ns clojars.web.group
   (:use clojars.web.common
-        clojars.db
+        (clojars.db users groups jars)
         compojure))
 
 (defn show-group [account group members & errors]

@@ -1,14 +1,30 @@
 (ns clojars.test.search
   (:use [clojure.test]
         (clojars search db)
-        [clojars.test.db :only [setup-db]]
-        [com.ashafa.clutch :only [with-db]]))
+        (clojars.db users jars groups)
+        [clojars.test.db :only [setup-db]])
+  (:import java.io.File))
 
-(defn setup-index [f]
-  (with-index nil
-    (f)))
+(def temp-dir)
 
-(use-fixtures :each setup-db setup-index)
+(defn delete-dir
+  "Recursively delete a directory."
+  [file]
+  (when (.isDirectory file)
+    (doseq [child (.list file)]
+      (delete-dir (File. file child))))
+  (.delete file))
+
+(defn setup-temp-dir [f]
+  (binding [temp-dir (File/createTempFile "clojars-test" ".tmp")]
+    (.delete temp-dir)
+    (.mkdir temp-dir)
+    (try
+     (f)
+     (finally
+      (delete-dir temp-dir)))))
+
+(use-fixtures :each setup-db setup-temp-dir)
 
 (deftest test-indexer
   (add-user "user@example.org" "user1" "pass" nil)
@@ -21,5 +37,8 @@
     :dependencies [{:name "clojure"
                     :group "org.clojure"
                     :version "1.0"}]})
-  (doall (map index-jar (all-jars)))
-  (is (= (count (search-jars "testing")) 1)))
+  (println (all-jars))
+  (index-jars temp-dir (all-jars))
+  (is (= (count (search-jars temp-dir "testing")) 1))
+  (is (= (count (search-jars temp-dir "bogus")) 0))
+  (is (= (:name (first (search-jars temp-dir "testing"))) "clojars-web")))

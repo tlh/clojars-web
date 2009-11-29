@@ -20,7 +20,7 @@
 
 ;; weirdo magic plexus container stuff to make maven work
 ;; TODO: find out if it's safe to just leave these hanging around like
-;; this 
+;; this
 (def embedder (doto (Embedder.) (.start)))
 (def container (.getContainer embedder))
 
@@ -28,52 +28,11 @@
   "Produces a vector of clojure data structures read from file."
   [file]
   (with-open [rdr (PushbackReader. (ds/reader file))]
-   (loop [v []]
-     (let [x (read rdr false ::end)]
-       (if (not= x ::end)
-         (recur (conj v x))
-         v)))))
-
-(defn defjar? [x]
-  (and (list? x)
-       (= (first x) 'defjar)))
-
-(defmulti form-to-map first)
-
-(defmethod form-to-map 'defjar [[dj jarname version & options]]
-  (when-not jarname
-    (raise :type ::invalid-defjar :missing :name
-           :message "defjar requires a name"))
-  (when-not version
-    (raise :type ::invalid-defjar :missing :version
-           :message "defjar requires a version"))
-  (when-not (even? (count options))
-    (raise :type ::invalid-defjar :invalid :options
-           :message "defjar requires an even number of options"))
-  (let [options-map (apply hash-map options)]
-   (into options-map
-         {:name (name jarname),
-          :group (namespace jarname),
-          :version version
-          :dependencies (for [[n v] (partition 2 (:dependencies
-                                                  options-map))]
-                          {:name (name n)
-                           :group (namespace n)
-                           :version v})})))
-
-;; leiningen support
-(defmethod form-to-map 'defproject [[dp jarname & options]]
-  (when-not jarname
-    (raise :type ::invalid-defproject :missing :name
-           :message "defproject requires a name"))
-  (when-not (even? (count options))
-    (raise :type ::invalid-defproject :invalid :options
-           :message "defproject requires an even number of options"))
-  (let [options-map (apply hash-map options)]
-   (into options-map
-         {:name (str jarname),
-          :dependencies (map #(hash-map :group (nth % 0) :name (nth % 1)
-                                        :version (nth % 2)) (:dependencies options-map))})))
+    (loop [v []]
+      (let [x (read rdr false ::end)]
+        (if (not= x ::end)
+          (recur (conj v x))
+          v)))))
 
 (defn make-dependency
   "Constructs a Maven Dependency object.  The jarsym should be
@@ -83,8 +42,8 @@
     (.setGroupId (:group jarmap))
     (.setArtifactId (:name jarmap))
     (.setVersion (:version jarmap))
-    ;(.setClassifier (:classifier jarmap))
-   )) 
+    ;;(.setClassifier (:classifier jarmap))
+    ))
 
 (defn make-contributor
   [name]
@@ -100,7 +59,7 @@
     (.setGroupId (:group dj))
     (.setArtifactId (:name dj))
     (.setVersion (:version dj))
-    ;(.setClassifier (:classifier dj))
+    ;;(.setClassifier (:classifier dj))
 
     (.setDescription (:description dj))
     (.setUrl (:homepage dj))
@@ -115,15 +74,16 @@
    :group (.getGroupId model)
    :version (.getVersion model)
    :description (.getDescription model)
-   
+
    :homepage (.getUrl model)
    :authors (vec (map #(.getName %) (.getContributors model)))
-   :dependencies (vec (mapcat (fn [d] [(symbol (.getGroupId d) 
-                                               (.getArtifactId d))
-                                       (.getVersion d)])
+   :dependencies (vec (map (fn [d]
+                             {:group (.getGroupId d)
+                              :name (.getArtifactId d)
+                              :version (.getVersion d)})
                               (.getDependencies model)))})
 
-(defn model-to-xml 
+(defn model-to-xml
   "Converts a maven model to a string of XML."
   [model]
   (let [sw (StringWriter.)]
@@ -139,13 +99,6 @@
       (.write (MavenXpp3Writer.) writer model))
     f))
 
-(defn read-jarspec
-  "Reads a jarspec file reurning a seq of jarmaps."
-  [file]
-  (map form-to-map 
-       (filter #(and (list %)
-                     (#{'defjar 'defproject} (first %))) (read-vec file))))
-
 (defn read-pom
   "Reads a pom file returning a maven Model object."
   [file]
@@ -156,8 +109,9 @@
   "Does the crazy factory voodoo necessary to get an ArtifactRepository object."
   [id url]
   (-> (.lookup container ArtifactRepositoryFactory/ROLE)
-      (.createDeploymentArtifactRepository 
-       id url (.lookup container ArtifactRepositoryLayout/ROLE "default") true)))
+      (.createDeploymentArtifactRepository
+       id url (.lookup container ArtifactRepositoryLayout/ROLE
+                       "default") true)))
 
 (defn make-settings
   "Makes a maven Settings object"
@@ -181,21 +135,12 @@
                   (.getVersion m)
                   (.getPackaging m)
                   nil)]
-    (.addMetadata artifact (ProjectArtifactMetadata. 
+    (.addMetadata artifact (ProjectArtifactMetadata.
                             artifact (model-to-file m)))
     artifact))
 
 (defn deploy-model [jarfile model repo-path]
-  (.deploy 
+  (.deploy
    (.lookup container ArtifactDeployer/ROLE)
    jarfile (make-artifact model) (make-repo "clojars" repo-path)
    (make-local-repo)))
-
-(comment
- (.getFile (first (.getMetadataList (make-artifact model))))
-
- (deploy-model (File. "/tmp/foo.jar") model "file:///tmp")
-
- (def model (make-model (defjar-to-map (first (filter defjar? (read-vec
-                                                               "/tmp/jarspec.clj"))))))Z
- (model-to-xml model))

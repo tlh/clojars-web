@@ -1,20 +1,38 @@
 (ns clojars.db.jars
   (:use (clojars.db utils groups)
-        com.ashafa.clutch)
+        [clojars.utils :only [unique-by]]
+        [clojars.search :only [index-jars]]
+        [clojars :only [config]]
+        [com.ashafa.clutch :exclude [config]])
   (:import java.util.Date))
+
+(defn find-jar [group name]
+  (first (map second (view-seq "jars" :by-full-name
+                               {:key (str group "/" name)}))))
+
+(defn find-canon-jar [name]
+  (find-jar name name))
 
 (defn all-jars []
   (map second (view-seq "jars" :all)))
 
 (defn recent-jars []
-  (map second (view-seq "jars" :by-created
-                        {:descending true})))
+  (unique-by (juxt :group :name)
+             (map second (view-seq "jars" :by-created
+                                   {:descending true}))))
 
 (defn jars-by-user [username]
-  (map second (view-seq "jars" :by-user {:key username})))
+  (sort-by (juxt :group :name)
+   (unique-by (juxt :group :name)
+              (map second (view-seq "jars" :by-user {:key username})))))
 
 (defn jars-by-group [group]
-  (map second (view-seq "jars" :by-group {:key group})))
+  (sort-by (juxt :group :name)
+   (unique-by (juxt :group :name)
+              (map second (view-seq "jars" :by-group {:key group})))))
+
+(defn jar-by-id [id]
+  (get-document id))
 
 (defn add-jar [account jarmap & [check-only]]
   (when-not (re-matches #"^[a-z0-9_.-]+$" (:name jarmap))
@@ -28,11 +46,13 @@
 
   (check-and-add-group account (:group jarmap) (:name jarmap))
 
-  (create-document
-   (assoc jarmap
-     :type "jar"
-     :user account
-     :created (Date.))))
+  (when-not check-only
+   (let [{id :id} (create-document
+                   (assoc jarmap
+                     :type "jar"
+                     :user account
+                     :created (Date.)))]
+     (index-jars (config :search-index) [(get-document id)]))))
 
 (defn init-jars-view []
   (when-let [doc (get-document "_design/jars")]
@@ -55,6 +75,18 @@
    (fn [doc]
      (when (= (doc :type) "jar")
        [[(:group doc) doc]])))
+
+  (create-clj-view
+   "jars" "by-name"
+   (fn [doc]
+     (when (= (doc :type) "jar")
+       [[(:name doc) doc]])))
+
+  (create-clj-view
+   "jars" "by-full-name"
+   (fn [doc]
+     (when (= (doc :type) "jar")
+       [[(str (:group doc) "/" (:name doc)) doc]])))
 
   (create-clj-view
    "jars" "by-created"

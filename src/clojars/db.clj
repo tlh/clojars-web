@@ -2,15 +2,15 @@
 
 (ns clojars.db
   "CouchDB database backend"
-  (:use [clojure.contrib.ns-utils :only [immigrate]])
-  (:require (clojars.db utils users jars groups)))
+  (:use [clojure.contrib.ns-utils :only [immigrate]]
+        [clojars :only [config]])
+  (:require (clojars.db utils users jars groups)
+            [com.ashafa.clutch :as clutch]))
 
-(immigrate 'clojars.db.utils
-           'clojars.db.users
-           'clojars.db.jars
-           'clojars.db.groups)
-
+(defmacro with-db [& body]
+  `(clutch/with-db (config :db)
+     ~@body))
 
 (defn init-db []
-  (init-users-view)
-  (init-jars-view))
+  (clojars.db.users/init-users-view)
+  (clojars.db.jars/init-jars-view))

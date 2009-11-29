@@ -1,6 +1,6 @@
 (ns clojars.web.dashboard
   (:use clojars.web.common
-        clojars.db
+        (clojars.db jars users)
         compojure))
 
 (defn index-page [account]
@@ -36,7 +36,7 @@
      (link-to "http://wiki.github.com/ato/clojars-web/tutorial"
               "tutorial") "."]
     [:h2 "Recently pushed jars"]
-    (unordered-list (map jar-link (recent-jars)))))
+    (unordered-list (map jar-link (take 10 (recent-jars))))))
 
 (defn dashboard [account]
   (html-doc account "Dashboard"

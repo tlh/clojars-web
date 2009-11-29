@@ -62,12 +62,12 @@
 
 (defn jar-link [jar]
   (link-to
-   (if (= (:group_name jar) (:jar_name jar))
-     (str "/" (:jar_name jar))
-     (str "/" (:group_name jar) "/" (:jar_name jar)))
-   (if (= (:group_name jar) (:jar_name jar))
-     (:jar_name jar)
-     (str (:group_name jar) "/" (:jar_name jar)))))
+   (if (= (:group jar) (:name jar))
+     (str "/" (:name jar))
+     (str "/" (:group jar) "/" (:name jar)))
+   (if (= (:group jar) (:name jar))
+     (:name jar)
+     (str (:group jar) "/" (:name jar)))))
 
 (defn user-link [user]
   (link-to (str "/users/" user)
@@ -77,6 +77,6 @@
   (link-to (str "/groups/" group) group))
 
 (defn jar-name [jar]
-  (if (= (:group_name jar) (:jar_name jar))
-    (h (:jar_name jar))
-    (h (str (:group_name jar) "/" (:jar_name jar)))))
+  (if (= (:group jar) (:name jar))
+    (h (:name jar))
+    (h (str (:group jar) "/" (:name jar)))))

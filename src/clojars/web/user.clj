@@ -1,7 +1,8 @@
 (ns clojars.web.user
-  (:use clojars.db
+  (:use (clojars.db users groups jars)
         clojars.web.common
         clojars.utils
+        [clojure.contrib.str-utils2 :only [join]]
         compojure))
 
 (defn register-form [ & [errors email user ssh-key]]
@@ -31,14 +32,16 @@
 (defn validate-profile
   "Validates a profile, returning nil if it's okay, otherwise a list
   of errors."
-  [account email user password confirm ssh-key]
+  [account email user password confirm ssh-keys]
   (-> nil
-      (conj-when (blank? email) "Email can't be blank")
+      (conj-when (and (nil? account) (blank? email)) "Email can't be blank")
+      (conj-when (neg? (.indexOf email "@")) "Email is invalid")
       (conj-when (blank? user) "Username can't be blank")
-      (conj-when (blank? password) "Password can't be blank")
-      (conj-when (not= password confirm)
+      (conj-when (and (nil? account) (blank? password))
+                 "Password can't be blank")
+      (conj-when (and (seq password) (not= password confirm))
                  "Password and confirm password must match")
-      (conj-when (or (*reserved-names* user)  ; "I told them we already
+      (conj-when (or (*reserved-names* user) ; "I told them we already
                      (and (not= account user) ; got one!"
                           (find-user user))
                      (seq (group-members user)))
@@ -46,17 +49,17 @@
       (conj-when (not (re-matches #"[a-z0-9_-]+" user))
                  (str "Usernames must consist only of lowercase "
                       "letters, numbers, hyphens and underscores."))
-      (conj-when (not (or (blank? ssh-key)
-                          (valid-ssh-key? ssh-key)))
+      (conj-when (some #(not (valid-ssh-key? %)) ssh-keys)
                  "Invalid SSH public key")))
 
 (defn register [{email :email, user :user, password :password
                  confirm :confirm, ssh-key :ssh-key}]
-  (if-let [errors (validate-profile nil email user password confirm ssh-key)]
-    (register-form errors email user ssh-key)
-    (do (add-user email user password ssh-key)
-        [(set-session {:account user})
-         (redirect-to "/")])))
+  (let [ssh-keys (remove empty? (map #(.trim %) (.split ssh-key "\n")))]
+   (if-let [errors (validate-profile nil email user password confirm ssh-keys)]
+     (register-form errors email user ssh-key)
+     (do (add-user email user password ssh-keys)
+         [(session-assoc :account user)
+          (redirect-to "/")]))))
 
 (defn profile-form [account & [errors]]
   (let [user (find-user account)]
@@ -71,22 +74,28 @@
                        (password-field :password)
                        (label :confirm "Confirm password:")
                        (password-field :confirm)
-                       (label :ssh-key "SSH public key:")
-                       (text-area :ssh-key (user :ssh_key))
+                       (label :ssh-key "SSH public key(s):")
+                       " ("
+                       (link-to
+                        "http://wiki.github.com/ato/clojars-web/ssh-keys"
+                        "what's this?") ")"
+                       [:textarea {:name :ssh-key, :wrap :off}
+                        (h (join "\n" (user :ssh-keys)))]
                        (submit-button "Update")))))
 
 (defn update-profile [account {email :email, password :password
                                confirm :confirm, ssh-key :ssh-key}]
-  (if-let [errors (validate-profile account email
-                                    account password confirm ssh-key)]
-    (profile-form account errors)
-    (do (update-user account email account password ssh-key)
-        [(redirect-to "/profile")])))
+  (let [ssh-keys (remove empty? (map #(.trim %) (.split ssh-key "\n")))]
+   (if-let [errors (validate-profile account email
+                                     account password confirm ssh-keys)]
+     (profile-form account errors)
+     (do (update-user account email password ssh-keys)
+         [(redirect-to "/profile")]))))
 
 (defn show-user [account user]
-  (html-doc account (h (user :user))
-    [:h1 (h (user :user))]
+  (html-doc account (h (user :username))
+    [:h1 (h (user :username))]
     [:h2 "Jars"]
-    (unordered-list (map jar-link (jars-by-user (user :user))))
+    (unordered-list (map jar-link (jars-by-user (user :username))))
     [:h2 "Groups"]
-    (unordered-list (map group-link (find-groups (user :user))))))
+    (unordered-list (map group-link (user :groups)))))

@@ -1,6 +1,8 @@
 (ns clojars.web
   (:require [clojure.contrib.sql :as sql])
-  (:use [clojars.db]
+  (:use [clojars :only [config]]
+        [clojars.db :only [with-db]]
+        (clojars.db users groups utils jars)
         [clojars.web dashboard group jar login search user common]
         [compojure]))
 
@@ -20,6 +22,12 @@
   `(let [~'account (~'session :account)]
      (do ~body)))
 
+(defn db-middleware [handler]
+  (fn [request]
+    (with-db (handler request))))
+
+;; TODO: move all the logic from these into the handler functions.
+;;       we don't need to do it here as the handlers can return :next
 (defroutes clojars-app
   (GET "/search"
     (try-account
@@ -102,4 +110,5 @@
 (comment
   (def server (run-server {:port 8000} "/*" (servlet clojars-app)))
   (.stop server)
+  (with-db (find-jar "hello" "world"))
   )
