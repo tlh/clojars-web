@@ -23,4 +23,5 @@
         (add-member group account))
       (when-not (some #{account} members)
         (throw (Exception. (str "You don't have access to the "
-                                group " group. Only " (vec members))))))))
+                                group " group. Only " (vec members)
+                                " may push to it.")))))))
