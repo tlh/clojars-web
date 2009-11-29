@@ -12,9 +12,11 @@ it.
 2. Set your configuration in src/clojars/config.clj.
 
 3. Fetch dependencies
+
     $ lein deps
 
 4. Run
+
     $ java -cp 'src:classes:lib/*' -i src/clojars/core.clj -e '(clojars.core/main)'
 
 5. If you want to use the SSH integration, create a local "clojars"
