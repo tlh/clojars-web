@@ -13,7 +13,7 @@
 
 (def *max-line-size* 4096)
 (def *max-file-size* 10485760)
-(def *allowed-suffixes* #{"clj" "xml" "jar" "sha1" "md5"})
+(def *allowed-suffixes* #{"clj" "xml" "jar" "sha1" "md5" "pom"})
 
 (set! *warn-on-reflection* true)
 
@@ -95,7 +95,7 @@
 (defn finish-deploy [#^NGContext ctx, files]
   (let [account (first (.getArgs ctx))
         act-group (str "org.clojars." account)
-        metadata (filter #(#{"xml"} (:suffix %)) files)
+        metadata (filter #(#{"xml" "pom"} (:suffix %)) files)
         jars     (filter #(#{"jar"} (:suffix %)) files)
         jarfiles (into {} (map (juxt :name :file) jars))]
 
