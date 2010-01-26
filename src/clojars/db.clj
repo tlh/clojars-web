@@ -14,3 +14,4 @@
 (defn init-db []
   (clojars.db.users/init-users-view)
   (clojars.db.jars/init-jars-view))
+

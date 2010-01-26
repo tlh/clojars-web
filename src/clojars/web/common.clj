@@ -30,11 +30,13 @@
        [:nav
         (if account
           (unordered-list
-           [(link-to "/" "dashboard")
+           [(link-to "/browse" "browse")
+            (link-to "/" "dashboard")
             (link-to "/profile" "profile")
             (link-to "/logout" "logout")])
           (unordered-list
-           [(link-to "/login" "login")
+           [(link-to "/browse" "browse")
+            (link-to "/login" "login")
             (link-to "/register" "register")]))
         (form-to [:get "/search"]
           [:input {:name "q" :id "search" :class :search :value
@@ -66,8 +68,9 @@
      (str "/" (:name jar))
      (str "/" (:group jar) "/" (:name jar)))
    (if (= (:group jar) (:name jar))
-     (:name jar)
-     (str (:group jar) "/" (:name jar)))))
+     (html [:span {:class "jar-name"} (:name jar)])
+     (html [:span {:class "group-name"} (:group jar)] "/"
+           [:span {:class "jar-name"}] (:name jar)))))
 
 (defn user-link [user]
   (link-to (str "/users/" user)
@@ -80,3 +83,15 @@
   (if (= (:group jar) (:name jar))
     (h (:name jar))
     (h (str (:group jar) "/" (:name jar)))))
+
+(defn jar-list [jars]
+  (html
+   (if (empty? jars)
+     [:p {:class "search-null"} "Nothing found."]
+     [:ul {:class "browse-results"}
+      (for [jar jars]
+        [:li
+         (jar-link jar) " "
+         [:span {:class "version"} "(" (h (:version jar)) ")"]
+         [:div {:class "desc"}
+          (h (:description jar))]])])))

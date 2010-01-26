@@ -31,6 +31,11 @@
    (unique-by (juxt :group :name)
               (map second (view-seq "jars" :by-group {:key group})))))
 
+(defn jars-by-letter [letter]
+  (sort-by (juxt :name :group)
+   (unique-by (juxt :group :name)
+              (map second (view-seq "jars" :by-letter {:key letter})))))
+
 (defn jar-by-id [id]
   (get-document id))
 
@@ -81,6 +86,12 @@
    (fn [doc]
      (when (= (doc :type) "jar")
        [[(:name doc) doc]])))
+
+  (create-clj-view
+   "jars" "by-letter"
+   (fn [doc]
+     (when (= (doc :type) "jar")
+       [[(.toUpperCase (subs (:name doc) 0 1)) doc]])))
 
   (create-clj-view
    "jars" "by-full-name"

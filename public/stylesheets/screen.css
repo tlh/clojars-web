@@ -198,3 +198,24 @@ footer a {
 .desc {
     color: #333;
 }
+
+ul.browse-results {
+    border: 2px solid #555;
+    background: #eee;
+    padding-left: 30px;
+    margin-left: 0;
+    -moz-border-radius: 10px;
+    -webkit-border-radius: 10px;
+    border-radius: 10px;
+}
+
+ul.browse-results li {
+    margin: 5px;
+
+}
+
+ul.browse-results li .version {
+    color: #777;
+    font-size: 66%;
+}
+

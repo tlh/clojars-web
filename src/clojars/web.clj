@@ -3,7 +3,7 @@
   (:use [clojars :only [config]]
         [clojars.db :only [with-db]]
         (clojars.db users groups utils jars)
-        [clojars.web dashboard group jar login search user common]
+        [clojars.web dashboard group jar login search user browse common]
         [compojure])
   (:import java.io.File))
 
@@ -48,6 +48,12 @@
   (GET "/search"
     (try-account
      (search account (params :q))))
+  (GET "/browse"
+    (try-account
+     (browse account)))
+  (GET "/browse/:tag"
+    (try-account
+     (browse account (params :tag))))
   (GET "/profile"
     (with-account
      (profile-form account)))

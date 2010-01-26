@@ -1,7 +1,6 @@
 (ns clojars.migration
   "Script to migrate from the old SQLite database to CouchDB."
   (:use clojars.db
-        [clojars.web :only [with-db]]
         clojure.contrib.sql
         [com.ashafa.clutch :only [create-document delete-database
                                   create-database]])
@@ -51,4 +50,4 @@
       (migrate-users)
       (migrate-jars))))
 
-(main)
+;(main)
