@@ -4,7 +4,8 @@
         [clojars.db :only [with-db]]
         (clojars.db users groups utils jars)
         [clojars.web dashboard group jar login search user common]
-        [compojure]))
+        [compojure])
+  (:import java.io.File))
 
 (defn not-found-doc []
   (html [:h1 "Page not found"]
@@ -25,6 +26,21 @@
 (defn db-middleware [handler]
   (fn [request]
     (with-db (handler request))))
+
+(defn find-public-dir
+  "Searches up the directory hierachy looking for the 'public' directory
+  containing static files.  This allows us to run from within a subdirectory of
+  the project, simplifying testing with SLIME and deployment."
+  []
+  (loop [path (File. (System/getProperty "user.dir"))]
+    (if path
+     (let [public (File. path "public")]
+       (if (.isDirectory public)
+         (str public)
+         (recur (.getParentFile path))))
+     "public")))
+
+(def public-dir (find-public-dir))
 
 ;; TODO: move all the logic from these into the handler functions.
 ;;       we don't need to do it here as the handlers can return :next
@@ -97,7 +113,7 @@
        (show-user account (:user user)))
       :next))
   (ANY "/*"
-       (if-let [f (serve-file (params :*))]
+       (if-let [f (serve-file public-dir (params :*))]
          [{:headers {"Cache-Control" "max-age=3600"}} f]
          :next))
   (ANY "*"
