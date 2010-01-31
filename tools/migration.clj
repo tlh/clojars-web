@@ -1,6 +1,7 @@
 (ns clojars.migration
   "Script to migrate from the old SQLite database to CouchDB."
   (:use clojars.db
+        [clojars.db.jars :only [reindex-jars]]
         clojure.contrib.sql
         [com.ashafa.clutch :only [create-document delete-database
                                   create-database]])
@@ -48,6 +49,13 @@
     (init-db)
     (with-connection sql-db
       (migrate-users)
-      (migrate-jars))))
+      (migrate-jars))
+    (reindex-jars)))
 
-;(main)
+;;(main)
+;; (with-db (reindex-jars))
+;; (with-db (all-jars))
+
+
+
+

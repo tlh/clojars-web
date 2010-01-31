@@ -13,7 +13,7 @@
 
 (def *max-line-size* 4096)
 (def *max-file-size* 10485760)
-(def *allowed-suffixes* #{"clj" "xml" "jar" "sha1" "md5" "pom"})
+(def *allowed-suffixes* #{"xml" "jar" "sha1" "md5" "pom"})
 
 (set! *warn-on-reflection* true)
 
@@ -166,3 +166,4 @@
 
 (defn -nailMain [context]
   (nail context))
+

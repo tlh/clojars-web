@@ -16,6 +16,9 @@
 (defn all-jars []
   (map second (view-seq "jars" :all)))
 
+(defn reindex-jars []
+  (index-jars (config :search-index) (sort-by :created (all-jars))))
+
 (defn recent-jars []
   (unique-by (juxt :group :name)
              (map second (view-seq "jars" :by-created
