@@ -1,0 +1,15 @@
+<article>
+  <h1>Login</h2>
+  <p>Don't have an account? <a href="/register">Sign up!</a></p>
+
+  <div class="error">Incorrect username or password.</div>
+
+  <form action="/login" method="POST" id="login-form">
+    <label>Username or email:</label>
+    <input name="username" />
+    <label>Password:</label>
+    <input name="password" type="password" />
+    <input type="hidden" name="redir" />
+    <input type="submit" value="Login" />
+  </form>
+</article>

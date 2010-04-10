@@ -1,0 +1,30 @@
+<article>
+  <p>Clojars is a <strong>dead easy</strong> community repository for open source <a href="http://clojure.org/">Clojure</a> libraries.</p>
+
+  <div class="useit">
+    <div class="lein">
+      <h3>pushing with leiningen</h3>
+      <code>
+        <span class="tag">$</span> lein pom<br />
+        <span class="tag">$</span> scp pom.xml mylib.jar clojars@clojars.org:
+      </code>
+    </div>
+
+    <p>It's the <strong>default repository</strong> for <a href="http://github.com/technomancy/leiningen/blob/master/README.md">Leiningen</a> but you can use it with other build tools like <a href="http://maven.apache.org/">Maven</a> or <a href="http://ant.apache.org/ivy/">Ivy</a> as well.</p>
+
+    <div class="maven">
+      <h3>maven repository</h3>
+      <code><pre><span class="tag">&lt;repository&gt;</span>
+<span class="tag">  &lt;id&gt;</span>clojars.org<span class="tag">&lt;/id&gt;</span>
+<span class="tag">  &lt;url&gt;</span>http://clojars.org/repo<span class="tag">&lt;/url&gt;</span>
+<span class="tag">&lt;/repository&gt;</span></pre></code>
+    </div>
+  </div>
+
+  <p>To <strong>get started</strong> pushing your own jars <a href="/register">create an account</a> and then check out the <a href="http://wiki.github.com/ato/clojars-web/tutorial">tutorial</a>.</p>
+
+  <h2>Recently pushed jars</h2>
+  <ul id="recent-jars">
+    <li><a href="/org.clojars.ato/toohot">org.clojars.ato/toohot</a></li>
+  </ul>
+</article>

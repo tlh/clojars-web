@@ -1,0 +1,18 @@
+<article>
+  <h1>Profile</h1>
+  <div class="error">
+    <strong>Blistering barnacles!</strong> Something's not shipshape:
+    <ul>
+      <li>Password can't be blank</li>
+    </ul>
+  </div>
+  <form action="/profile" method="POST" class="profile">
+    <label for="email">Email:</label><input id="email" name="email" type="email" />
+    <label for="password">Password:</label><input id="password" name="password" type="password" value="" />
+    <label for="confirm">Confirm password:</label><input id="confirm" name="confirm" type="password" value="" />
+    <label for="ssh-keys">SSH public key(s):</label> 
+    (<a href="http://wiki.github.com/ato/clojars-web/ssh-keys">what's this?</a>)
+    <textarea id="ssh-keys" name="ssh-keys"></textarea>
+    <input type="submit" value="Update" />
+  </form>
+</article>
