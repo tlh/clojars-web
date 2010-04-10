@@ -28,5 +28,5 @@
         (prn form)))))
 
 (defn -main [repo dest]
- (write-feed! (full-feed (file repo)) dest))
+ (write-feed! (full-feed (file repo)) (str dest "/feed.clj.gz")))
 

@@ -127,10 +127,10 @@
       (let [prefix-length (+ (count (:artifact-id pom))
                              (count (:group-id pom))
                              3)
-            ss-tag (subs name prefix-length (- (count name) (count ".pom")))
-            [timestamp build] (str/split ss-tag #"-")]
+            [_ timestamp build] (re-matches #".*-([0-9.]+)-([0-9]+)\.pom" name)]
         (assoc pom :snapshot {:timestamp timestamp
-                              :build-number (Integer/parseInt build)})))))
+                              :build-number (Integer/parseInt build)}))
+      pom)))
 
 (defn #^File group-path [repodir group-id]
   (file repodir (str/replace group-id "." File/separator)))
@@ -151,6 +151,12 @@
            (mapcat #(.listFiles #^File %))
            (filter pom-file?)
            (map parse-pom)))))
+
+(defn pom-seq [#^File repo]
+  (for [f (file-seq repo)
+        :when (and (not (re-matches #".*/\..*" (str f)))
+                   (pom-file? f))]
+    (parse-pom f)))
 
 ;;;; Maven Metadata
 
