@@ -43,3 +43,12 @@
      (lazy-seq
       (when-let [[x & xs] (seq (drop-while #(seen (f %)) coll))]
         (cons x (unique-by f (conj seen (f x)) xs))))))
+
+(defn make-date [date]
+  (if (number? date)
+    (java.util.Date. (long date))
+    date))
+
+(defn pretty-date [date]
+  (when date
+   (.format (java.text.SimpleDateFormat. "yyyy-MM-dd") (make-date date))))

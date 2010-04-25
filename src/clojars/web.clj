@@ -1,11 +1,17 @@
 (ns clojars.web
   (:use compojure
-        (clojars.web common login homepage user)))
+        (clojars.web common login homepage user jar)))
 
 (defn dashboard [x]
   (h (str x)))
 
 (decorate-with require-login dashboard)
+
+(defn serve-resource [root path]
+  (when (safe-path? root path)
+    (when-let [stream (.getResourceAsStream (clojure.lang.RT/baseLoader)
+                                            (str root "/" path))]
+      [{:headers {"Cache-Control" "max-age=3600"}} stream])))
 
 (defroutes clojars-routes
   (GET "/login" login)
@@ -17,6 +23,9 @@
   (POST "/profile" update-profile)
   (GET "/dashboard" dashboard)
   (GET "/" homepage)
+  (GET #"/([^/]+)/([^/]+)" show-jar)
+  (GET #"/([^/]+)" show-jar)
+  (ANY "/*" (or (serve-resource "clojars/public" (params :*)) :next))
   (ANY "*" [404 "not found"]))
 
 (decorate clojars-routes

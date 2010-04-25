@@ -5,25 +5,41 @@ body {
     line-height: 150%;
 }
 
-.header h1 a {
+hgroup {
+    float: left;
+}
+
+header {
+    height: 160px;
+    width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 20px;
+}
+
+header h1 a {
     background: url(../images/header.png) no-repeat;
     height: 160px;
     display: block;
     text-indent: -10000px;
 }
 
-.header h2 {
+header h2 {
     display: none;
 }
 
-.article h1 {
+header h1 {
+    width: 400px;
+}
+
+article h1 {
     color: #336;
     margin-top: 20px;
     margin-bottom: 20px;
     font-size: 30px;
 }
 
-.article h2 {
+article h2 {
     color: #336;
     margin-bottom: 20px;
     margin-top: 40px;
@@ -44,7 +60,8 @@ p {
     margin-bottom: 1em;
 }
 
-.article {
+article {
+    clear: both;
     font-size: 20px;
 
     width: 660px;
@@ -54,6 +71,8 @@ p {
     padding-bottom: 20px;
     margin-bottom: 10px;
     margin-top: 20px;
+    margin-left: auto;
+    margin-right: auto;
 
     background: #dccec7;
 
@@ -64,21 +83,23 @@ p {
     border-radius: 10px;
 }
 
+/*
+ * Navigation
+ */
+
 nav {
     float: right;
     display: block;
     margin-top: 50px;
     height: 40px;
-
     margin-right: 10px;
-
     font-size: 20px;
-    text-align: right;
 }
 
 nav ul {
     display: inline;
 }
+
 nav ul li {
     display: inline;
 }
@@ -161,6 +182,16 @@ footer a {
     margin: 20px;
 }
 
+footer ul {
+    list-style: none;
+    margin: 0;
+    margin-bottom: 10px;
+}
+
+footer ul li {
+    display: inline;
+}
+
 .useit h3 {
     text-align: left;
     margin-bottom: 20px;
@@ -219,3 +250,11 @@ ul.browse-results li .version {
     font-size: 66%;
 }
 
+ul.versions {
+    list-style: none;
+    margin-left: 0;
+}
+
+.versions li .date, .versions li .scmtag {
+    font-size: 80%;
+}

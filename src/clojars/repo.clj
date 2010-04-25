@@ -122,7 +122,8 @@
 (defn parse-pom [#^File f]
   (let [name (.getName f)
         pom (-> (parse-pom-xml (xml/parse f))
-                (assoc :pom-file name))]
+                (assoc :pom-file name
+                       :last-modified (.lastModified f)))]
     (if (snapshot-version? (:version pom) )
       (let [prefix-length (+ (count (:artifact-id pom))
                              (count (:group-id pom))
