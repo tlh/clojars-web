@@ -1,6 +1,6 @@
 (ns clojars.utils)
 
-0(defn sha1 [& s]
+(defn sha1 [& s]
   (when-let [s (seq s)]
     (let [md (java.security.MessageDigest/getInstance "SHA")]
       (.update md (.getBytes (apply str s)))
@@ -51,4 +51,24 @@
 
 (defn pretty-date [date]
   (when date
-   (.format (java.text.SimpleDateFormat. "yyyy-MM-dd") (make-date date))))
+    (.format (java.text.SimpleDateFormat. "yyyy-MM-dd") (make-date date))))
+
+(defn repr [obj]
+  (with-out-str (pr obj)))
+
+(defn servlet-url
+  "Returns the absolute URL of this servlet."
+  [request & [path]]
+  (let [sreq #^javax.servlet.http.HttpServletRequest (:servlet-request request)
+        port (.getServerPort sreq)
+        scheme (.getScheme sreq)]
+    (str scheme
+         "://"
+         (.getServerName sreq)
+         (when (and (pos? port)
+                    (not (and (= scheme "http") (= port 80)))
+                    (not (and (= scheme "https") (= port 443))))
+           (str ":" port))
+         (.getServletPath sreq)
+         path)))
+

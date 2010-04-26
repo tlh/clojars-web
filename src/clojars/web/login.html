@@ -4,6 +4,13 @@
 
   <div class="error">Incorrect username or password.</div>
 
+  <form action="/login" method="POST" id="openid-login-form">
+    <label>OpenID:</lavel>
+    <input id="openid_identifier" name="openid_identifier" class="openid" />
+    <input type="hidden" name="redir" />
+    <input type="submit" value="Login" />
+  </form>
+
   <form action="/login" method="POST" id="login-form">
     <label>Username or email:</label>
     <input name="username" />

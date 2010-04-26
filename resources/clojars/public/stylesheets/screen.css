@@ -258,3 +258,9 @@ ul.versions {
 .versions li .date, .versions li .scmtag {
     font-size: 80%;
 }
+
+input.openid {
+    background: url('../images/openid.png') no-repeat;
+    padding-left: 24px;
+    background-color: white;
+}

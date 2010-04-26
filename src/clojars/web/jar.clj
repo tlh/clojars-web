@@ -1,6 +1,7 @@
 (ns clojars.web.jar
   (:use net.cgrand.enlive-html
         clojars.web.common
+        [clojars.config :only [config]]
         [clojars.utils :only [pretty-date unique-by]]
         [clojars.repo :only [poms-for-artifact compare-versions
                              snapshot-version?]])
@@ -24,7 +25,7 @@
                (and (.startsWith base "http://github.com/")))
       (str base "/tree/" tag))))
 
-(defn homepage [pom]
+(defn homepage-url [pom]
   (or (:url pom) (-> pom :scm :url)))
 
 (defn pom-url [pom]
@@ -49,15 +50,15 @@
   [:.useit :.artifact-id] (content (:artifact-id pom))
   [:.useit :.version]     (content (:version pom))
   [:.versions]            (content (map jar-version-model other-poms))
-  [:.links :.homepage]    #(if (homepage pom) % nil)
-  [:.links :.homepage :a] (set-attr :href (homepage pom))
+  [:.links :.homepage]    #(if (homepage-url pom) % nil)
+  [:.links :.homepage :a] (set-attr :href (homepage-url pom))
   [:.links :.pom :a]      (set-attr :href (pom-url pom))
   [:.links :.jar :a]      (set-attr :href (jar-url pom)))
 
 (defn show-jar [request]
   (let [[group-id artifact-id] (:route-params request)
         artifact-id (or artifact-id group-id)
-        poms (->> (poms-for-artifact "/home/ato/tmp/clojars"
+        poms (->> (poms-for-artifact (config :repo-path)
                                      group-id artifact-id)
                   (sort-by :last-modified #(compare %2 %1))
                   (sort-by :version #(compare-versions %2 %1))

@@ -1,5 +1,6 @@
 (ns clojars.web
   (:use compojure
+        [clojars.utils :only [servlet-url]]
         (clojars.web common login homepage user jar)))
 
 (defn dashboard [x]
@@ -23,8 +24,8 @@
   (POST "/profile" update-profile)
   (GET "/dashboard" dashboard)
   (GET "/" homepage)
-  (GET #"/([^/]+)/([^/]+)" show-jar)
-  (GET #"/([^/]+)" show-jar)
+  (GET #"/([a-zA-Z0-9._-]+)/([a-zA-Z0-9._-]+)" show-jar)
+  (GET #"/([a-zA-Z0-9._-]+)" show-jar)
   (ANY "/*" (or (serve-resource "clojars/public" (params :*)) :next))
   (ANY "*" [404 "not found"]))
 
@@ -44,5 +45,4 @@
      (run-server
       {:port 8000}
       "/*" (servlet clojars-routes)))
-
 

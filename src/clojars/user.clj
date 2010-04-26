@@ -1,6 +1,7 @@
 (ns clojars.user
   (:use [clojure.contrib.java-utils :only [file]]
         [clojure.contrib.duck-streams :only [reader writer]]
+        [clojars.config :only [config]]
         clojars.utils))
 
 (def *reserved-names*
@@ -19,8 +20,6 @@
 (def date-format
      (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss'Z'")
        (.setTimeZone (java.util.TimeZone/getTimeZone "UTC"))))
-
-(def users-dir (file "/home/clojars/data/users"))
 
 (defn- valid-username? [#^String username]
   (re-matches #"[a-z0-9_-]+" username))
@@ -52,7 +51,7 @@
 (defn find-user [username]
   (validate-username username)
   (try
-   (read-file (file users-dir username))
+   (read-file (file (config :users-path) username))
    (catch java.io.FileNotFoundException e
      nil)))
 
@@ -66,16 +65,25 @@
                   :groups [(str "org.clojars." username)])
         profile (dissoc profile :confirm :redir)]
     (validate-username username)
-    (prn-file (file users-dir username) profile)))
+    (prn-file (file (config :users-path) username) profile)))
 
 (defn all-users []
-  (->> (.listFiles users-dir)
+  (->> (.listFiles (file (config :users-path)))
        (map #(.getName %))
        (filter valid-username?)
        (map find-user)))
 
 (defn users-by-email [email]
   (filter #(= email (:email %)) (all-users)))
+
+(defn user-by-openid [openid]
+  (first (filter #(= openid (:openid %)) (all-users))))
+
+(defn update-user [profile]
+  (assert (:username profile))
+  (add-user profile))
+
+;;;; Password Authentication
 
 (defn auth-user [username password]
   (if-let [user (find-user username)]
@@ -84,6 +92,3 @@
     (first (filter #(= (:password %) (sha1 (:salt %) password))
                    (users-by-email username)))))
 
-(defn update-user [profile]
-  (assert (:username profile))
-  (add-user profile))
