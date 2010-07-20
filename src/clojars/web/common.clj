@@ -84,12 +84,17 @@
     (h (:name jar))
     (h (str (:group jar) "/" (:name jar)))))
 
+(defn- org-clojars-group?
+  [jar]
+  (-> jar :group (.startsWith "org.clojars.")))
+
 (defn jar-list [jars]
   (html
    (if (empty? jars)
      [:p {:class "search-null"} "Nothing found."]
      [:ul {:class "browse-results"}
-      (for [jar jars]
+      (for [jar (concat (remove org-clojars-group? jars)
+                        (filter org-clojars-group? jars))]
         [:li
          (jar-link jar) " "
          [:span {:class "version"} "(" (h (:version jar)) ")"]
