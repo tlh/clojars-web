@@ -102,7 +102,10 @@
     (doseq [metafile metadata
             :when (not= (:name metafile) "maven-metadata.xml")
             [model jarmap] (read-metadata metafile act-group)
-            :let [names (jar-names jarmap)]]
+            :let [names (jar-names jarmap)
+                  repo  (if (.endsWith (:version jarmap) "-SNAPSHOT")
+                          (or (:snapshot-repo config) (:repo config))
+                          (:repo config))]]
 
       (comment (when (not= (:group jarmap) act-group)
                  (throw (Exception.
@@ -116,7 +119,7 @@
                                (:name jarmap) " " (:version jarmap)))
           (add-jar (first (.getArgs ctx)) jarmap true)
           (maven/deploy-model jarfile model
-                              (str "file://" (:repo config)))
+                              (str "file://" repo))
           (add-jar (first (.getArgs ctx)) jarmap))
         (throw (Exception. (str "You need to give me one of: " names)))))
     (.println *err* (str "\nSuccess! Your jars are now available from "
